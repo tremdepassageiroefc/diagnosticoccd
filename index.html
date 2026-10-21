@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Diagnóstico LED CCD</title>
+<meta name="description" content="Guia de diagnóstico da válvula de freio ECP (CCD) pelos LEDs PWR, COM, BRK e FLT.">
+<meta name="theme-color" content="#007e7a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="LED CCD">
+<style>html{color-scheme:light dark}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: placa de LEDs à esquerda como "painel físico", diagnóstico ao vivo à direita; referência completa abaixo */
+:root{
+  --bg:#eef1f0; --surface:#ffffff; --fg:#17201e; --muted:#5b6865; --line:#cfd8d5;
+  --plate:#c9cfcd; --plate-edge:#9aa4a1; --plate-ink:#2a3230; --slot:#1c2321;
+  --accent:#007e7a; --accent-ink:#ffffff;
+  --ok:#1f8a4c; --ok-bg:#e3f4ea; --warn:#a86a00; --warn-bg:#fbf0d9; --bad:#c0292b; --bad-bg:#fbe4e3;
+  --led-red:#ff2a2a; --led-green:#2bdc4c; --led-off:#3a4341;
+  --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"Source Sans 3","Segoe UI",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#121816; --surface:#1a2220; --fg:#e4ebe9; --muted:#97a6a2; --line:#2c3735;
+  --plate:#5a6361; --plate-edge:#3e4644; --plate-ink:#e9eeec; --slot:#0b0f0e;
+  --accent:#2fb5ae; --accent-ink:#06201e;
+  --ok:#55d08a; --ok-bg:#15301f; --warn:#f0b54a; --warn-bg:#33270e; --bad:#ff6b6b; --bad-bg:#3a1617;
+  --led-off:#2a3230; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121816; --surface:#1a2220; --fg:#e4ebe9; --muted:#97a6a2; --line:#2c3735;
+  --plate:#5a6361; --plate-edge:#3e4644; --plate-ink:#e9eeec; --slot:#0b0f0e;
+  --accent:#2fb5ae; --accent-ink:#06201e;
+  --ok:#55d08a; --ok-bg:#15301f; --warn:#f0b54a; --warn-bg:#33270e; --bad:#ff6b6b; --bad-bg:#3a1617;
+  --led-off:#2a3230; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 48px}
+.wrap{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+header{display:flex;flex-direction:column;gap:6px;border-bottom:2px solid var(--fg);padding-bottom:14px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(32px,6vw,52px);line-height:1;margin:0;text-wrap:balance;text-transform:uppercase;letter-spacing:.01em}
+.sub{color:var(--muted);margin:0;max-width:65ch}
+h2{font-family:var(--display);font-weight:600;font-size:24px;text-transform:uppercase;letter-spacing:.03em;margin:0}
+
+.main{display:grid;grid-template-columns:minmax(260px,320px) 1fr;gap:28px;align-items:start}
+@media (max-width:760px){.main{grid-template-columns:1fr}}
+
+/* Painel de LEDs */
+.panel{display:flex;flex-direction:column;align-items:center;gap:16px}
+.plate{position:relative;width:230px;max-width:100%;padding:96px 34px 96px 34px}
+.plate-shape{position:absolute;inset:0;background:var(--plate);z-index:0;
+  clip-path:polygon(50% 0,70% 10%,70% 14%,100% 20%,100% 80%,70% 90%,50% 100%,30% 90%,0 86%,0 18%,30% 10%)}
+.plate-shape::before,.plate-shape::after{content:"";position:absolute;left:50%;width:18px;height:18px;margin-left:-9px;border-radius:50%;
+  background:var(--slot);box-shadow:inset 0 0 0 4px var(--plate-edge)}
+.plate-shape::before{top:22px}.plate-shape::after{bottom:22px}
+.rows{position:relative;z-index:1;display:flex;flex-direction:column;gap:10px;padding:12px 10px;border-radius:40px;background:var(--plate);box-shadow:inset 0 0 0 3px var(--plate-edge)}
+.row{display:grid;grid-template-columns:1fr auto;align-items:center;gap:14px}
+.lbl{font-family:var(--display);font-weight:700;font-size:28px;color:var(--plate-ink);letter-spacing:.04em}
+.led{width:48px;height:48px;border-radius:50%;border:3px solid var(--slot);background:var(--led-off);cursor:pointer;padding:0;
+  box-shadow:inset 0 -6px 10px rgba(0,0,0,.35);transition:transform .1s}
+.led:hover{transform:scale(1.06)}
+.led:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.led[data-c="red"]{background:var(--led-red);box-shadow:0 0 18px var(--led-red),inset 0 -6px 10px rgba(0,0,0,.25)}
+.led[data-c="green"]{background:var(--led-green);box-shadow:0 0 18px var(--led-green),inset 0 -6px 10px rgba(0,0,0,.25)}
+.led[data-blink="1"]{animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{background:var(--led-off);box-shadow:inset 0 -6px 10px rgba(0,0,0,.35)}}
+@media (prefers-reduced-motion:reduce){.led[data-blink="1"]{animation:none;outline:3px dashed var(--fg);outline-offset:3px}}
+.hint{font-size:13px;color:var(--muted);text-align:center;margin:0;max-width:300px}
+
+.controls{width:100%;display:flex;flex-direction:column;gap:10px}
+.ctl{display:flex;flex-direction:column;gap:4px}
+.ctl span{font-family:var(--mono);font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.seg{display:flex;flex-wrap:wrap;gap:4px}
+.seg button{flex:1 1 auto;font:600 13px var(--body);padding:6px 8px;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:6px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.seg button:focus-visible,.presets button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.presets{display:flex;flex-wrap:wrap;gap:6px;width:100%}
+.presets button{font:600 13px var(--body);padding:7px 10px;border-radius:6px;border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer}
+.presets button:hover{background:var(--accent);color:var(--accent-ink)}
+
+/* Diagnóstico */
+.diag{display:flex;flex-direction:column;gap:16px;min-width:0}
+.verdict{display:flex;flex-direction:column;gap:4px;padding:18px 20px;border-radius:10px;border:2px solid currentColor}
+.verdict.ok{color:var(--ok);background:var(--ok-bg)}
+.verdict.warn{color:var(--warn);background:var(--warn-bg)}
+.verdict.bad{color:var(--bad);background:var(--bad-bg)}
+.verdict .tag{font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.1em}
+.verdict .title{font-family:var(--display);font-weight:700;font-size:30px;line-height:1.05;text-transform:uppercase;text-wrap:balance}
+.verdict p{margin:0;color:var(--fg)}
+
+.readout{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden}
+.ro{display:grid;grid-template-columns:62px 1fr auto;gap:12px;align-items:center;padding:11px 16px;border-top:1px solid var(--line)}
+.ro:first-child{border-top:0}
+.ro b{font-family:var(--mono);font-size:14px}
+.ro .txt{min-width:0}
+.pill{font:700 11px var(--mono);text-transform:uppercase;letter-spacing:.06em;padding:3px 8px;border-radius:99px;white-space:nowrap}
+.pill.ok{color:var(--ok);background:var(--ok-bg)}.pill.warn{color:var(--warn);background:var(--warn-bg)}.pill.bad{color:var(--bad);background:var(--bad-bg)}.pill.info{color:var(--muted);background:var(--bg)}
+
+.actions{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 20px}
+.actions h3{font-family:var(--display);font-size:20px;text-transform:uppercase;margin:0 0 8px;letter-spacing:.03em}
+.actions ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.actions .none{margin:0;color:var(--muted)}
+
+/* Referência */
+.ref{display:flex;flex-direction:column;gap:12px}
+.grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.card h3{margin:0;font-family:var(--display);font-size:22px;letter-spacing:.03em;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.card h3 small{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;font-weight:500}
+.card ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.card li{display:grid;grid-template-columns:16px 1fr;gap:8px;align-items:start;font-size:15px}
+.dot{width:14px;height:14px;border-radius:50%;margin-top:4px;border:1px solid var(--slot)}
+.dot.off{background:var(--led-off)}.dot.red{background:var(--led-red)}.dot.green{background:var(--led-green)}
+.dot.blink{background:repeating-linear-gradient(90deg,var(--led-green) 0 4px,var(--led-off) 4px 7px)}
+.note{font-size:14px;color:var(--muted);margin:0;max-width:75ch}
+footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">EFC · Carros de passageiros · Freio ECP EP-60</div>
+    <h1>Diagnóstico pelos LEDs do CCD</h1>
+    <p class="sub">Reproduza no painel o que você vê na válvula eletropneumática (Car Control Device) do carro. O diagnóstico e as ações aparecem ao lado.</p>
+  </header>
+
+  <section class="main">
+    <div class="panel">
+      <div class="plate" aria-label="Display de LEDs do CCD">
+        <div class="plate-shape" aria-hidden="true"></div>
+        <div class="rows" id="rows"></div>
+      </div>
+      <p class="hint">Toque em um LED para alternar o estado, ou use os seletores abaixo.</p>
+      <div class="controls" id="controls"></div>
+      <div class="presets">
+        <button type="button" id="p-solto">Normal · freio solto</button>
+        <button type="button" id="p-aplic">Normal · freio aplicado</button>
+        <button type="button" id="p-reset">Tudo apagado</button>
+      </div>
+    </div>
+
+    <div class="diag">
+      <div class="verdict" id="verdict" aria-live="polite"></div>
+      <div class="readout" id="readout"></div>
+      <div class="actions"><h3>O que fazer</h3><div id="actions"></div></div>
+    </div>
+  </section>
+
+  <section class="ref">
+    <h2>Tabela de referência</h2>
+    <div class="grid4">
+      <div class="card"><h3>PWR <small>Energia</small></h3><ul>
+        <li><i class="dot off"></i>Apagado: CCD desligado</li>
+        <li><i class="dot green"></i>Verde: CCD ligado usando a bateria</li>
+        <li><i class="dot blink"></i>Verde piscando: bateria do CCD baixa</li>
+        <li><i class="dot red"></i>Vermelho: CCD recebendo 230 VDC pelo cabo (trainline)</li></ul></div>
+      <div class="card"><h3>COM <small>Comunicação</small></h3><ul>
+        <li><i class="dot off"></i>Apagado: sem comunicação com a locomotiva</li>
+        <li><i class="dot blink"></i>Verde piscando: comunicando com a locomotiva</li></ul></div>
+      <div class="card"><h3>BRK <small>Freios</small></h3><ul>
+        <li><i class="dot off"></i>Apagado: freios soltos</li>
+        <li><i class="dot green"></i>Verde: freios aplicados</li>
+        <li><i class="dot blink"></i>Verde piscando: carro isolado pelo ECP (não pela torneira do coletor de pó)</li></ul></div>
+      <div class="card"><h3>FLT <small>Falha</small></h3><ul>
+        <li><i class="dot off"></i>Apagado: OK</li>
+        <li><i class="dot red"></i>Vermelho: falha na válvula ECP (CCD)</li></ul></div>
+    </div>
+    <p class="note">Situação normal com freio solto: PWR vermelho, COM verde, BRK e FLT apagados. Com freio aplicado: igual, porém com BRK verde.</p>
+  </section>
+
+</div>
+
+<script>
+const LEDS = {
+  PWR:{name:"Energia",states:[
+    {k:"off",label:"Apagado",c:"",b:0},{k:"green",label:"Verde",c:"green",b:0},
+    {k:"blink",label:"Verde piscando",c:"green",b:1},{k:"red",label:"Vermelho",c:"red",b:0}]},
+  COM:{name:"Comunicação",states:[
+    {k:"off",label:"Apagado",c:"",b:0},{k:"blink",label:"Verde piscando",c:"green",b:1}]},
+  BRK:{name:"Freios",states:[
+    {k:"off",label:"Apagado",c:"",b:0},{k:"green",label:"Verde",c:"green",b:0},
+    {k:"blink",label:"Verde piscando",c:"green",b:1}]},
+  FLT:{name:"Falha",states:[
+    {k:"off",label:"Apagado",c:"",b:0},{k:"red",label:"Vermelho",c:"red",b:0}]}
+};
+const state = {PWR:"red",COM:"blink",BRK:"off",FLT:"off"};
+
+const MEANING = {
+  PWR:{off:["CCD desligado","bad"],green:["CCD ligado com a bateria, sem 230 VDC do cabo","warn"],
+       blink:["Bateria do CCD baixa","warn"],red:["Recebendo 230 VDC do trainline","ok"]},
+  COM:{off:["Sem comunicação com a locomotiva","bad"],blink:["Comunicando com a locomotiva","ok"]},
+  BRK:{off:["Freios soltos","info"],green:["Freios aplicados","info"],blink:["Carro isolado pelo ECP","warn"]},
+  FLT:{off:["Válvula ECP sem falha","ok"],red:["Falha na válvula ECP (CCD)","bad"]}
+};
+const PILL = {ok:"OK",warn:"Atenção",bad:"Falha",info:"Estado"};
+
+const rows = document.getElementById("rows"), controls = document.getElementById("controls");
+Object.keys(LEDS).forEach(id=>{
+  const r=document.createElement("div");r.className="row";
+  r.innerHTML=`<span class="lbl">${id}</span><button class="led" type="button" id="led-${id}"></button>`;
+  rows.appendChild(r);
+  r.querySelector("button").addEventListener("click",()=>{
+    const s=LEDS[id].states, i=s.findIndex(x=>x.k===state[id]);
+    state[id]=s[(i+1)%s.length].k; render();
+  });
+  const c=document.createElement("div");c.className="ctl";
+  c.innerHTML=`<span>${id} · ${LEDS[id].name}</span><div class="seg" role="group" aria-label="${id}">`+
+    LEDS[id].states.map(s=>`<button type="button" id="seg-${id}-${s.k}" data-id="${id}" data-k="${s.k}">${s.label}</button>`).join("")+`</div>`;
+  controls.appendChild(c);
+});
+controls.addEventListener("click",e=>{const b=e.target.closest("button[data-k]");if(!b)return;state[b.dataset.id]=b.dataset.k;render();});
+document.getElementById("p-solto").onclick=()=>{Object.assign(state,{PWR:"red",COM:"blink",BRK:"off",FLT:"off"});render();};
+document.getElementById("p-aplic").onclick=()=>{Object.assign(state,{PWR:"red",COM:"blink",BRK:"green",FLT:"off"});render();};
+document.getElementById("p-reset").onclick=()=>{Object.assign(state,{PWR:"off",COM:"off",BRK:"off",FLT:"off"});render();};
+
+function diagnose(s){
+  const acts=[]; let level="ok", title, text;
+  const allOff = Object.values(s).every(v=>v==="off");
+  if(allOff){
+    level="bad"; title="CCD sem energia";
+    text="Todos os LEDs apagados: a válvula não está recebendo energia nem da bateria nem do trainline.";
+    acts.push("Com a composição em modo SWITCH (manobra), confirme que o carro anterior está com os LEDs acesos.",
+      "Verifique os cabos ECP entre este carro e o anterior: cabos faltando, danificados ou esmagados no engate.",
+      "Desconecte os conectores, bata-os levemente com o bocal voltado para o solo para tirar sujeira e reconecte pressionando os dois botões.",
+      "Se não resolver, solte os cabos das caixas de passagem e confira os pinos internos. Pinos tortos ou quebrados: substituir o cabo.",
+      "Persistindo, retire da composição os dois carros suspeitos (o último com LEDs acesos e o primeiro apagado) e encaminhe para a manutenção ECP.");
+    return {level,title,text,acts};
+  }
+  if(s.FLT==="red"){ level="bad";
+    acts.push("A válvula ECP (CCD) indica falha interna. Registre o carro e encaminhe para a manutenção do sistema ECP.",
+      "Verifique na tela do ECP da locomotiva se há alarme para este carro.");}
+  if(s.PWR==="off"){ level="bad";
+    acts.push("PWR apagado indica CCD desligado. Verifique os cabos e conectores do trainline deste carro.");}
+  if(s.PWR==="green"){ if(level!=="bad")level="warn";
+    acts.push("O CCD está funcionando só com a bateria. Em modo ECP normal o PWR deve ficar vermelho (230 VDC).",
+      "Verifique se o cabo ECP chega energizado a este carro: cabos desacoplados, danificados ou em curto.",
+      "Se houver indicação de tensão baixa no trainline na tela do ECP, investigue cabos em curto, módulos Car ID (IDM) ou a fonte (TPS) da locomotiva.");}
+  if(s.PWR==="blink"){ if(level!=="bad")level="warn";
+    acts.push("Bateria do CCD baixa. Restabeleça a alimentação de 230 VDC pelo trainline e programe a verificação da bateria na manutenção.");}
+  if(s.COM==="off" && s.PWR!=="off"){ level="bad";
+    acts.push("Sem comunicação com a locomotiva. Coloque a composição em modo SWITCH e percorra os carros observando os LEDs.",
+      "Verifique e limpe os conectores dos cabos ECP entre este carro e o anterior; substitua cabos danificados.");}
+  if(s.BRK==="blink"){ if(level!=="bad")level="warn";
+    acts.push("Carro isolado pelo ECP (não pela torneira do coletor de pó). Confirme com o maquinista se o isolamento foi intencional.");}
+
+  const brk = s.BRK==="green"?"aplicado":s.BRK==="off"?"solto":"isolado";
+  if(level==="ok"){
+    title = `Situação normal · freio ${brk}`;
+    text = "Trainline com 230 VDC, comunicação com a locomotiva ativa e válvula sem falha.";
+  } else if(level==="warn"){
+    title = "Atenção";
+    text = `O carro opera, mas há uma condição fora do normal. Freio ${brk}.`;
+  } else {
+    title = s.FLT==="red" ? "Falha na válvula ECP" : (s.COM==="off" ? "Falha de comunicação" : "CCD desligado");
+    text = "O carro não está operando corretamente no modo ECP.";
+  }
+  return {level,title,text,acts};
+}
+
+function render(){
+  Object.keys(LEDS).forEach(id=>{
+    const st=LEDS[id].states.find(x=>x.k===state[id]);
+    const el=document.getElementById("led-"+id);
+    el.dataset.c=st.c; el.dataset.blink=st.b;
+    el.setAttribute("aria-label",`${id}: ${st.label}. Toque para mudar.`);
+    LEDS[id].states.forEach(s=>document.getElementById(`seg-${id}-${s.k}`).setAttribute("aria-pressed",s.k===state[id]));
+  });
+  const d=diagnose(state), v=document.getElementById("verdict");
+  v.className="verdict "+d.level;
+  v.innerHTML=`<span class="tag">${PILL[d.level]==="OK"?"Diagnóstico · OK":"Diagnóstico · "+PILL[d.level]}</span><span class="title">${d.title}</span><p>${d.text}</p>`;
+  document.getElementById("readout").innerHTML=Object.keys(LEDS).map(id=>{
+    const [t,l]=MEANING[id][state[id]], lab=LEDS[id].states.find(x=>x.k===state[id]).label;
+    return `<div class="ro"><b>${id}</b><div class="txt">${t}<br><small style="color:var(--muted)">${lab}</small></div><span class="pill ${l}">${PILL[l]}</span></div>`;
+  }).join("");
+  document.getElementById("actions").innerHTML = d.acts.length
+    ? "<ol>"+d.acts.map(a=>`<li>${a}</li>`).join("")+"</ol>"
+    : `<p class="none">Nenhuma ação necessária. Na formação do trem, confirme a aplicação e o alívio dos freios dos últimos carros com o maquinista.</p>`;
+}
+render();
+</script>
+<script>
+if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));}
+</script>
+</body>
+</html>
