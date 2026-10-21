@@ -11,6 +11,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="LED CCD">
 <style>html{color-scheme:light dark}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -123,15 +124,60 @@ h2{font-family:var(--display);font-weight:600;font-size:24px;text-transform:uppe
 .dot.blink{background:repeating-linear-gradient(90deg,var(--led-green) 0 4px,var(--led-off) 4px 7px)}
 .note{font-size:14px;color:var(--muted);margin:0;max-width:75ch}
 footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}
+
+/* Abertura: autoteste dos LEDs */
+.splash{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;
+  padding:max(24px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(24px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));
+  transition:opacity .7s ease,visibility .7s;cursor:pointer}
+.splash.done{opacity:0;visibility:hidden;pointer-events:none}
+.splash .eyebrow{text-align:center}
+.sp-title{font-family:var(--display);font-weight:700;font-size:clamp(28px,7vw,40px);text-transform:uppercase;line-height:1;margin:0;text-align:center}
+.splash .rows{padding:16px 14px}
+.splash .led{cursor:default;width:54px;height:54px}
+.splash .led:hover{transform:none}
+.splash .led{transition:background-color .25s ease,box-shadow .25s ease}
+.sp-status{font-family:var(--mono);font-size:13px;color:var(--muted);min-height:1.5em;text-align:center}
+.sp-bar{width:min(240px,70vw);height:4px;border-radius:2px;background:var(--line);overflow:hidden}
+.sp-bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .9s linear}
+.sp-skip{font-size:12px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){.splash{transition:none}}
+
+/* Barra do app: instalação e off-line */
+.appbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:6px}
+.net{font:600 12px var(--mono);text-transform:uppercase;letter-spacing:.06em;padding:4px 10px;border-radius:99px;display:inline-flex;align-items:center;gap:6px}
+.net::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.net.ok{color:var(--ok);background:var(--ok-bg)}.net.warn{color:var(--warn);background:var(--warn-bg)}.net.info{color:var(--muted);background:var(--surface);border:1px solid var(--line)}
+.install{font:700 14px var(--body);padding:8px 14px;border-radius:8px;border:0;background:var(--accent);color:var(--accent-ink);cursor:pointer}
+.install:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.ios-hint{font-size:13px;color:var(--muted)}
 </style>
 
 </head>
 <body>
+<div class="splash" id="splash" role="status" aria-label="Autoteste dos LEDs">
+  <div class="eyebrow">Freio ECP · CCD</div>
+  <p class="sp-title">Diagnóstico LED CCD</p>
+  <div class="rows" id="sp-rows">
+    <div class="row"><span class="lbl">PWR</span><span class="led" id="sp-PWR"></span></div>
+    <div class="row"><span class="lbl">COM</span><span class="led" id="sp-COM"></span></div>
+    <div class="row"><span class="lbl">BRK</span><span class="led" id="sp-BRK"></span></div>
+    <div class="row"><span class="lbl">FLT</span><span class="led" id="sp-FLT"></span></div>
+  </div>
+  <div class="sp-status" id="sp-status">Iniciando autoteste…</div>
+  <div class="sp-bar"><i id="sp-bar"></i></div>
+  <div class="sp-skip">Toque para pular</div>
+</div>
+
 <div class="wrap">
   <header>
     <div class="eyebrow">EFC · Carros de passageiros · Freio ECP EP-60</div>
     <h1>Diagnóstico pelos LEDs do CCD</h1>
     <p class="sub">Reproduza no painel o que você vê na válvula eletropneumática (Car Control Device) do carro. O diagnóstico e as ações aparecem ao lado.</p>
+    <div class="appbar">
+      <span class="net info" id="net">Verificando modo off-line…</span>
+      <button type="button" class="install" id="install" hidden>Instalar app</button>
+      <span class="ios-hint" id="ios-hint" hidden>No iPhone: Compartilhar → Adicionar à Tela de Início</span>
+    </div>
   </header>
 
   <section class="main">
@@ -287,9 +333,56 @@ function render(){
     : `<p class="none">Nenhuma ação necessária. Na formação do trem, confirme a aplicação e o alívio dos freios dos últimos carros com o maquinista.</p>`;
 }
 render();
+
+/* ---------- Abertura: autoteste dos LEDs ---------- */
+(function(){
+  const sp=document.getElementById("splash"); if(!sp) return;
+  const L=id=>document.getElementById("sp-"+id), st=document.getElementById("sp-status"), bar=document.getElementById("sp-bar");
+  const set=(m)=>Object.keys(m).forEach(id=>{const v=m[id]||"",el=L(id);el.dataset.c=v.replace("*","");el.dataset.blink=v.endsWith("*")?1:0;});
+  const OFF={PWR:"",COM:"",BRK:"",FLT:""}, ALL={PWR:"red",COM:"green",BRK:"green",FLT:"red"};
+  const seq=[
+    [0,OFF,"Iniciando autoteste…"],
+    [900,{...OFF,PWR:"green"},"PWR · energia"],
+    [1800,{...OFF,PWR:"green",COM:"green"},"COM · comunicação"],
+    [2700,{...OFF,PWR:"green",COM:"green",BRK:"green"},"BRK · freios"],
+    [3600,{...OFF,PWR:"green",COM:"green",BRK:"green",FLT:"red"},"FLT · falha"],
+    [4600,OFF,"Teste de lâmpadas"],[5050,ALL],[5550,OFF],[6000,ALL],[6500,OFF],
+    [7000,{PWR:"red",COM:"green*",BRK:"",FLT:""},"Sistema pronto"]
+  ];
+  const LAST=7000, END=8800;
+  const timers=[]; let closed=false;
+  function close(){ if(closed) return; closed=true; timers.forEach(clearTimeout); sp.classList.add("done"); setTimeout(()=>sp.hidden=true,700); }
+  seq.forEach(([t,m,txt])=>timers.push(setTimeout(()=>{set(m); if(txt) st.textContent=txt; bar.style.width=Math.min(100,t/LAST*100)+"%";},t)));
+  timers.push(setTimeout(close,END));
+  sp.addEventListener("click",close);
+  addEventListener("keydown",e=>{if(e.key==="Escape"||e.key==="Enter"||e.key===" ")close();});
+})();
+
+/* ---------- Instalação e funcionamento off-line ---------- */
+(function(){
+  const net=document.getElementById("net"), btn=document.getElementById("install"), ios=document.getElementById("ios-hint");
+  const standalone=matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
+  let swReady=false, deferred=null;
+  function show(){
+    if(!navigator.onLine){net.className="net warn";net.textContent="Sem conexão · usando versão salva";}
+    else if(swReady){net.className="net ok";net.textContent="Pronto para uso off-line";}
+    else{net.className="net info";net.textContent="On-line";}
+  }
+  addEventListener("online",show); addEventListener("offline",show);
+  if("serviceWorker" in navigator && location.protocol.startsWith("http")){
+    addEventListener("load",()=>{
+      navigator.serviceWorker.register("sw.js").catch(()=>{});
+      navigator.serviceWorker.ready.then(()=>{swReady=true;show();});
+    });
+  }
+  show();
+  addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferred=e;if(!standalone)btn.hidden=false;});
+  btn.addEventListener("click",async()=>{ if(!deferred) return; deferred.prompt(); try{await deferred.userChoice;}catch(_){} deferred=null; btn.hidden=true; });
+  addEventListener("appinstalled",()=>{btn.hidden=true;ios.hidden=true;});
+  const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+  if(isIOS&&!standalone) ios.hidden=false;
+})();
 </script>
-<script>
-if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));}
-</script>
+
 </body>
 </html>

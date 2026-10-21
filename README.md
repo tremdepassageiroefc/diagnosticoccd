@@ -1,6 +1,6 @@
 # Diagnóstico LED CCD
 
-Guia interativo para diagnosticar a válvula de freio ECP (CCD) dos carros de passageiros pelos LEDs **PWR**, **COM**, **BRK** e **FLT**. Funciona offline e pode ser instalado como aplicativo.
+Guia interativo para diagnosticar a válvula de freio ECP (CCD) dos carros de passageiros pelos LEDs **PWR**, **COM**, **BRK** e **FLT**. Abre com um autoteste animado dos LEDs, funciona off-line e pode ser instalado como aplicativo. Depois de aberto uma vez com internet, o app fica salvo no aparelho.
 
 ## Publicar no GitHub Pages
 
@@ -18,4 +18,4 @@ Guia interativo para diagnosticar a válvula de freio ECP (CCD) dos carros de pa
 
 ## Atualizar
 
-Ao modificar algum arquivo, aumente a versão em `sw.js` (`led-ccd-v1` → `led-ccd-v2`) para que os aparelhos recebam a nova versão.
+Ao modificar algum arquivo, aumente a versão em `sw.js` (`led-ccd-v3` → `led-ccd-v4`) para que os aparelhos recebam a nova versão.
